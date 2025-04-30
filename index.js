@@ -1,6 +1,6 @@
 const express = require('express');
-const puppeteer = require('puppeteer');
-const chromium = require('chromium');
+const chromium = require('@sparticuz/chromium');
+const puppeteer = require('puppeteer-core');
 
 const app = express();
 
@@ -10,9 +10,9 @@ app.get('/', async (req, res) => {
 
   try {
     const browser = await puppeteer.launch({
-      executablePath: chromium.path,
-      headless: true,
-      args: ['--no-sandbox', '--disable-setuid-sandbox']
+      args: chromium.args,
+      executablePath: await chromium.executablePath(),
+      headless: chromium.headless,
     });
 
     const page = await browser.newPage();
@@ -24,10 +24,10 @@ app.get('/', async (req, res) => {
 
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
 
-    const content = await page.content();
+    const html = await page.content();
     await browser.close();
 
-    res.status(200).send(content);
+    res.status(200).send(html);
   } catch (err) {
     res.status(500).send(`Error: ${err.message}`);
   }
