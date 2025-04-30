@@ -1,30 +1,17 @@
 const express = require('express');
-const puppeteer = require('puppeteer-core');
-const { execSync } = require('child_process');
+const puppeteer = require('puppeteer');
+const chromium = require('chromium');
 
 const app = express();
-
-function findChromeExecutable() {
-  try {
-    return execSync('which chromium-browser || which chromium || which google-chrome')
-      .toString()
-      .trim();
-  } catch (err) {
-    return null;
-  }
-}
 
 app.get('/', async (req, res) => {
   const url = req.query.url;
   if (!url) return res.status(400).send('Missing URL parameter');
 
-  const executablePath = findChromeExecutable();
-  if (!executablePath) return res.status(500).send('Chrome executable not found.');
-
   try {
     const browser = await puppeteer.launch({
+      executablePath: chromium.path,
       headless: true,
-      executablePath,
       args: ['--no-sandbox', '--disable-setuid-sandbox']
     });
 
