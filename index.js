@@ -24,8 +24,21 @@ app.get('/', async (req, res) => {
       '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     );
 
-    await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
-    await page.waitForTimeout(3000); // תן זמן ל-JS לרוץ
+    await page.goto(url, { waitUntil: 'networkidle0', timeout: 45000 });
+
+    // המתן ש-document יהיה בסטטוס 'complete'
+    await page.waitForFunction(() => document.readyState === 'complete');
+
+    // אינטראקציה "אנושית"
+    await page.mouse.move(200, 200);
+    await page.evaluate(() => {
+      window.scrollTo(0, 150);
+      document.body.dispatchEvent(new Event('mousemove'));
+      window.dispatchEvent(new Event('focus'));
+    });
+
+    // המתן לפעולת webhook מהדף (אם היא תתרחש)
+    await page.waitForTimeout(4000);
 
     if (returnScreenshot) {
       const screenshot = await page.screenshot({ type: 'png', fullPage: true });
@@ -37,6 +50,7 @@ app.get('/', async (req, res) => {
       await browser.close();
       return res.status(200).send(html);
     }
+
   } catch (err) {
     res.status(500).send(`Error: ${err.message}`);
   }
