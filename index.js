@@ -19,18 +19,24 @@ app.get('/', async (req, res) => {
 
     const page = await browser.newPage();
 
+    // 🧠 עקיפת זיהוי בוט
+    await page.evaluateOnNewDocument(() => {
+      Object.defineProperty(navigator, 'webdriver', { get: () => false });
+      window.chrome = { runtime: {} };
+      Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+      Object.defineProperty(navigator, 'plugins', {
+        get: () => [1, 2, 3],
+      });
+    });
+
     await page.setUserAgent(
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
       '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     );
 
-    // 1. טען את הדף עם networkidle0
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 45000 });
-
-    // 2. חכה שהדף ב-readyState 'complete'
     await page.waitForFunction(() => document.readyState === 'complete');
 
-    // 3. גלול ועכבר כדי "לעורר" JS
     await page.mouse.move(200, 100);
     await page.evaluate(() => {
       window.scrollTo(0, 150);
@@ -38,10 +44,8 @@ app.get('/', async (req, res) => {
       window.dispatchEvent(new Event('focus'));
     });
 
-    // 4. המתנה של 10 שניות לתהליך ה-webhook
     await page.waitForTimeout(10000);
 
-    // 5. בדוק אם מופיע טקסט DOM של "Last sent"
     let webhookConfirmed = false;
     try {
       await page.waitForFunction(() => {
@@ -54,7 +58,6 @@ app.get('/', async (req, res) => {
       webhookConfirmed = false;
     }
 
-    // 6. צלם אם צריך
     if (returnScreenshot) {
       const screenshot = await page.screenshot({ type: 'png', fullPage: true });
       await browser.close();
