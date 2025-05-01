@@ -6,6 +6,8 @@ const app = express();
 
 app.get('/', async (req, res) => {
   const url = req.query.url;
+  const returnScreenshot = req.query.screenshot === 'true';
+
   if (!url) return res.status(400).send('Missing URL parameter');
 
   try {
@@ -23,11 +25,18 @@ app.get('/', async (req, res) => {
     );
 
     await page.goto(url, { waitUntil: 'networkidle2', timeout: 0 });
+    await page.waitForTimeout(3000); // תן זמן ל-JS לרוץ
 
-    const html = await page.content();
-    await browser.close();
-
-    res.status(200).send(html);
+    if (returnScreenshot) {
+      const screenshot = await page.screenshot({ type: 'png', fullPage: true });
+      await browser.close();
+      res.set('Content-Type', 'image/png');
+      return res.send(screenshot);
+    } else {
+      const html = await page.content();
+      await browser.close();
+      return res.status(200).send(html);
+    }
   } catch (err) {
     res.status(500).send(`Error: ${err.message}`);
   }
