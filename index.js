@@ -24,46 +24,45 @@ app.get('/', async (req, res) => {
       '(KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
     );
 
-    // טען את העמוד
+    // 1. טען את הדף עם networkidle0
     await page.goto(url, { waitUntil: 'networkidle0', timeout: 45000 });
 
-    // המתן שהעמוד יהיה ב-readyState=complete
+    // 2. חכה שהדף ב-readyState 'complete'
     await page.waitForFunction(() => document.readyState === 'complete');
 
-    // אינטראקציה מדומה
-    await page.mouse.move(100, 100);
+    // 3. גלול ועכבר כדי "לעורר" JS
+    await page.mouse.move(200, 100);
     await page.evaluate(() => {
-      window.scrollTo(0, 100);
+      window.scrollTo(0, 150);
       window.dispatchEvent(new Event('mousemove'));
       window.dispatchEvent(new Event('focus'));
     });
 
-    // האזן לקונסול כדי לזהות את ה-webhook אם יש הדפסה
-    page.on('console', msg => {
-      if (msg.text().includes('webhook sent')) {
-        console.log('📡 Webhook Triggered!');
-      }
-    });
+    // 4. המתנה של 10 שניות לתהליך ה-webhook
+    await page.waitForTimeout(10000);
 
-    // המתן לאלמנט שמעיד על השלמת webhook (אם יש כזה)
+    // 5. בדוק אם מופיע טקסט DOM של "Last sent"
+    let webhookConfirmed = false;
     try {
-      await page.waitForSelector('span:text("Last sent:")', { timeout: 10000 });
-    } catch (e) {
-      console.warn("⚠️ Webhook indication not found in DOM.");
+      await page.waitForFunction(() => {
+        const spanList = [...document.querySelectorAll('span')];
+        return spanList.some(el => el.textContent.includes("Last sent"));
+      }, { timeout: 7000 });
+
+      webhookConfirmed = true;
+    } catch {
+      webhookConfirmed = false;
     }
 
-    // המתן זמן נוסף
-    await page.waitForTimeout(3000);
-
+    // 6. צלם אם צריך
     if (returnScreenshot) {
       const screenshot = await page.screenshot({ type: 'png', fullPage: true });
       await browser.close();
       res.set('Content-Type', 'image/png');
       return res.send(screenshot);
     } else {
-      const html = await page.content();
       await browser.close();
-      return res.status(200).send(html);
+      return res.status(200).json({ webhookConfirmed });
     }
 
   } catch (err) {
